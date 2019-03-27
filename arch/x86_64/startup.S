@@ -10,7 +10,8 @@
 # RCX. These are all potential arguments from platform-specific
 # bootloader code that will be passed to the platform init function
 
-start32:
+.set start32, _start32-KERNEL_VMA_BASE
+_start32:
     cli
     # RCX is a potential argument from platform startup code to
     # kinit. We need to preserve it. (we need it for MSR access)
@@ -44,7 +45,8 @@ start32:
 
 .code64
 
-start64:
+.set start64, _start64-KERNEL_VMA_BASE
+_start64:
     cli
     # If we're coming in already in long mode, we just need to set up our GDT and IDT,
     # and point to our paging structures.

@@ -33,5 +33,5 @@ loader:
     movl %ebx, %esi
     movl %eax, %edi
     movl $bootstack_top, %esp # the PHYSICAL address of our boot stack region
-    push $(start32-KERNEL_VMA_BASE)
+    push $start32
     ret
