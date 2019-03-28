@@ -1,17 +1,18 @@
 #pragma once
 
+#include "stddef.h"
 #include "stdint.h"
 
 class PageTable {
-    uint64_t pml4;
+    uintptr_t pml4;
 
 public:
     PageTable create();
     PageTable current();
 
-    void map(uint64_t phys, uint64_t virt, uint64_t size);
-    void unmap(uint64_t virt, uint64_t size);
-    void physical(void* virt);
+    void map(uintptr_t phys, uintptr_t virt, size_t size);
+    void unmap(uintptr_t virt, size_t size);
+    uintptr_t physical(uintptr_t virt);
 
     void activate();
 };

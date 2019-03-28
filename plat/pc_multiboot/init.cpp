@@ -33,7 +33,7 @@ struct multiboot {
     multiboot_tag_new_acpi *acpi_new = 0;
 };
 
-bool read_multiboot_tags(const uint8_t* descriptor, multiboot* mb) {
+bool read_multiboot_tags(uintptr_t descriptor, multiboot* mb) {
     auto next_tag = [&](const multiboot_tag* tag) {
         auto size = tag->size;
         if(size % 8 != 0) {
@@ -45,7 +45,7 @@ bool read_multiboot_tags(const uint8_t* descriptor, multiboot* mb) {
     };
 
     auto info = (multiboot_information*)descriptor;
-    const uint8_t* desc_end = descriptor + info->size;
+    const uintptr_t desc_end = descriptor + info->size;
     descriptor += 8; // skip past the info header
     for(auto tag = (multiboot_tag*)descriptor;
         descriptor < desc_end && tag->type != MULTIBOOT_TAG_TYPE_END;
@@ -79,14 +79,14 @@ bool initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
         klog("Can't use the memory map!");
         return false;
     }
-    uint64_t num_entries = (mb.mmap->size - 16) / mb.mmap->entry_size;
-    for(uint64_t i = 0; i < num_entries; i++) {
+    size_t num_entries = (mb.mmap->size - 16) / mb.mmap->entry_size;
+    for(size_t i = 0; i < num_entries; i++) {
         auto entry = mb.mmap->entries[i];
         if (entry.type == MULTIBOOT_MEMORY_AVAILABLE) {
             alloc.add_region(entry.addr, entry.len);
         }
     }
-    for(uint64_t i = 0; i < num_entries; i++) {
+    for(size_t i = 0; i < num_entries; i++) {
         auto entry = mb.mmap->entries[i];
         if (entry.type == MULTIBOOT_MEMORY_RESERVED ||
             entry.type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE ||
@@ -96,7 +96,7 @@ bool initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
         }
     }
 
-    for (uint64_t i = 0; i < mb.shdr->num; i++) {
+    for (size_t i = 0; i < mb.shdr->num; i++) {
         auto section = (Elf64Section*)(mb.shdr->sections + i * mb.shdr->entsize);
         if (section->type && section->addr) {
             auto addr = section->addr > KERNEL_VMA_BASE ? section->addr - KERNEL_VMA_BASE : section->addr;
@@ -119,8 +119,8 @@ void print_mmap(multiboot& mb) {
         };
 
     klog("==Physical Memory Map==\n");
-    uint64_t num_entries = (mb.mmap->size - 16) / mb.mmap->entry_size;
-    for(uint64_t i = 0; i < num_entries; i++) {
+    size_t num_entries = (mb.mmap->size - 16) / mb.mmap->entry_size;
+    for(size_t i = 0; i < num_entries; i++) {
         auto entry = mb.mmap->entries[i];
         klog(entry.addr, ":", entry.addr+entry.len, " ", labels[entry.type], "\n");
     }
@@ -143,7 +143,7 @@ extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
     // initialize our memory management, as we will likely overwrite
     // Grub's data structures if we don't.
     multiboot tags;
-    read_multiboot_tags((uint8_t*)(uint64_t)multiboot_ptr, &tags);
+    read_multiboot_tags((uintptr_t)multiboot_ptr, &tags);
 
     if (tags.acpi_new) {
         // TODO: Get XSDT pointer
@@ -154,9 +154,9 @@ extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
         return false;
     }
 
-    uint64_t elf_header_size = tags.shdr->num * tags.shdr->entsize;
+    size_t elf_header_size = tags.shdr->num * tags.shdr->entsize;
     uint8_t* elf_section_headers = new uint8_t[elf_header_size];
-    for (uint64_t i = 0; i < elf_header_size; i++)
+    for (size_t i = 0; i < elf_header_size; i++)
         elf_section_headers[i] = tags.shdr->sections[i];
 
     if(!initialize_page_allocator(tags, PageAllocator::global())) {

@@ -7,12 +7,12 @@ PageAllocator& PageAllocator::global() {
     return instance;
 }
 
-void PageAllocator::add_region(uint64_t start, uint64_t size) {
-    uint64_t huge_start = start;
-    uint64_t huge_end = start + size;
-    uint64_t big_start = start;
-    uint64_t big_end = start + size;
-    uint64_t end = start + size;
+void PageAllocator::add_region(uintptr_t start, size_t size) {
+    uintptr_t huge_start = start;
+    uintptr_t huge_end = start + size;
+    uintptr_t big_start = start;
+    uintptr_t big_end = start + size;
+    uintptr_t end = start + size;
 
     // align huge section start/end
     if (huge_start & HUGE_PAGE_MASK) {
@@ -77,9 +77,10 @@ void PageAllocator::add_region(uint64_t start, uint64_t size) {
     }
 }
 
-void PageAllocator::add_chunk(List<PageChunk>& chunks, uint64_t start, uint64_t size) {
-    uint64_t end = start + size;
+void PageAllocator::add_chunk(List<PageChunk>& chunks, uintptr_t start, size_t size) {
+    uintptr_t end = start + size;
 
+    // TODO: lock the page allocator for multi-cpu safety
     auto chunk = chunks.begin();
     for (; chunk != chunks.end(); ++chunk) {
         // If we belong directly after this chunk, we'll remove it
@@ -114,7 +115,7 @@ void PageAllocator::add_chunk(List<PageChunk>& chunks, uint64_t start, uint64_t 
     chunk.insert({start, size});
 }
 
-void PageAllocator::reserve_region(uint64_t start, uint64_t size) {
+void PageAllocator::reserve_region(uintptr_t start, size_t size) {
     // For each type of chunk, we check for overlap with the
     // region. If we find any, we trim the chunk, then re-add what's
     // left

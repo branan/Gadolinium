@@ -1,3 +1,1 @@
-class PageTable {
-    uint64_t pml4;
-};
+#include "paging.hpp"

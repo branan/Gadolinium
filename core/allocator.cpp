@@ -8,7 +8,7 @@ Allocator& Allocator::global() {
     return instance;
 }
 
-void Allocator::add_region(uint64_t addr, uint64_t size) {
+void Allocator::add_region(uintptr_t addr, size_t size) {
     FreeChunk* prev = nullptr;
     FreeChunk* chunk = m_head;
 
@@ -16,7 +16,7 @@ void Allocator::add_region(uint64_t addr, uint64_t size) {
     // The list is sorted, so this also tries to merge adjacent
     // regions if possible.
     while (chunk) {
-        if (addr+size < (uint64_t)chunk) {
+        if (addr+size < (uintptr_t)chunk) {
             // we're contained entirely before this chunk.
             // Make sure we're big enough to be a standalone chunk
             if (size < ALLOC_ALIGN * 2) {
@@ -27,15 +27,15 @@ void Allocator::add_region(uint64_t addr, uint64_t size) {
             new_chunk->next = chunk;
             (prev ? prev->next : m_head) = new_chunk;
             return;
-        } else if ((uint64_t)chunk + chunk->size == addr) {
+        } else if ((uintptr_t)chunk + chunk->size == addr) {
             // We are just after this chunk. We'll update our start
             // address+size, and use the fallthrough paths to merge us
             // if necessary;
-            addr = (uint64_t)chunk;
+            addr = (uintptr_t)chunk;
             size += chunk->size;
             (prev? prev->next : m_head) = chunk->next;
             chunk = chunk->next;
-        } else if (addr + size == (uint64_t) chunk) {
+        } else if (addr + size == (uintptr_t) chunk) {
             // We are just before this chunk. We'll update our start
             // address + size, and use the fallthrough paths to insert
             // us where we belong.
@@ -61,7 +61,7 @@ void Allocator::add_region(uint64_t addr, uint64_t size) {
     (prev ? prev->next : m_head) = new_chunk;
 }
 
-void* Allocator::alloc(uint64_t size) {
+void* Allocator::alloc(size_t size) {
     // Round up size to a multiple of our alloc alignment
     if ((size & ALLOC_MASK) != 0) {
         size += ALLOC_ALIGN;
@@ -77,15 +77,15 @@ void* Allocator::alloc(uint64_t size) {
     while (chunk) {
         if (chunk->size >= size) {
             chunk->size -= size;
-            uint64_t* block = nullptr;
+            size_t* block = nullptr;
             if (chunk->size < (ALLOC_ALIGN*2)) {
                 // We've consumed this entire chunk.
                 size += chunk->size;
-                block = (uint64_t*)chunk;
+                block = (size_t*)chunk;
                 (prev ? prev->next : m_head) = chunk->next;
             } else {
                 // otherwise we are somewhere after the new chunk
-                block = (uint64_t*)((uint64_t)chunk + chunk->size);
+                block = (size_t*)((uintptr_t)chunk + chunk->size);
             }
             block[0] = size;
             block[1] = 0xDECAF'00000'C0FFEE;
@@ -101,8 +101,8 @@ void* Allocator::alloc(uint64_t size) {
 }
 
 void Allocator::dealloc(void* addr) {
-    uint64_t block_addr = (uint64_t)addr - ALLOC_ALIGN;
-    uint64_t* block = (uint64_t*)block_addr;
+    auto block_addr = (uintptr_t)addr - ALLOC_ALIGN;
+    auto block = (uintptr_t*)block_addr;
     if (block[1] != 0xDECAF'00000'C0FFEE) {
         klog("Tried to free a non-allocated region. Ignoring\n");
         return;
@@ -114,7 +114,7 @@ void Allocator::dump() const {
     klog("==Heap Allocator==\n");
     auto chunk = m_head;
     while(chunk) {
-        klog((uint64_t)chunk,":", chunk->size+(uint64_t)chunk, "\n");
+        klog((uintptr_t)chunk,":", chunk->size+(uintptr_t)chunk, "\n");
         chunk = chunk->next;
     }
 }
