@@ -60,7 +60,8 @@ include_directories(core)
 
 add_executable(kernel ${kernel_SOURCES})
 
-target_compile_options(kernel PUBLIC -m64 -fno-PIC -fno-stack-protector -fno-rtti -fno-exceptions -fno-builtin -nostdlib -mcmodel=kernel -Wall -Wextra -Werror)
+# Common options. Platform/arch specific options are added below.
+target_compile_options(kernel PUBLIC -fno-stack-protector -fno-rtti -fno-exceptions -fno-builtin -nostdlib -Wall -Wextra -Werror)
 
 set_target_properties(kernel PROPERTIES
   LINK_DEPENDS "${LINKER_SCRIPT}"
@@ -77,13 +78,17 @@ if (PLATFORM STREQUAL "pc_multiboot")
   add_custom_command(OUTPUT ${IMAGE_FILE}
     COMMAND grub-mkrescue -o ${IMAGE_FILE} ${CMAKE_BINARY_DIR}/isofiles
     DEPENDS kernel ${OUTPUT}/grub/grub.cfg
-  )
+    )
+
+  target_compile_options(kernel PUBLIC -fno-PIC)
 endif()
 
 add_custom_target(image ALL DEPENDS ${IMAGE_FILE})
 
 if (ARCH STREQUAL "x86_64")
   set(QEMU_OPTIONS -machine q35 -soundhw hda -serial stdio -m 4G -smp 2 -cdrom ${IMAGE_FILE})
+
+  target_compile_options(kernel PUBLIC -m64 -mcmodel=kernel)
 endif()
 
 add_custom_target(run
