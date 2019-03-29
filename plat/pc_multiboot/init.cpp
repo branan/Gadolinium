@@ -20,8 +20,8 @@ static const char* tag_names[] = {
     "efi32",
     "efi64",
     "smbios",
-    "acpi old",
-    "acpi new",
+    "acpi (old)",
+    "acpi (new)",
     "network",
 };
 
@@ -47,10 +47,6 @@ bool read_multiboot_tags(uintptr_t descriptor, multiboot* mb) {
         EXTRACT_TAG(acpi_old, OldAcpi);
         EXTRACT_TAG(acpi_new, NewAcpi);
         EXTRACT_TAG(cmd_line, CommandLine);
-
-        if (tag.cast<Multiboot::TagEnd>()) {
-            break;
-        }
 
         auto biggest_tag = sizeof(tag_names) / sizeof(tag_names[0]);
         if (tag.type > biggest_tag) {
@@ -122,9 +118,6 @@ void print_mmap(multiboot& mb) {
         klog(entry.addr, ":", entry.addr+entry.len, " ", labels[(uint32_t)entry.type], "\n");
     }
 }
-
-struct rsdt;
-struct xsdt;
 
 extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
     if(MULTIBOOT2_BOOTLOADER_MAGIC != magic) {

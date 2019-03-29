@@ -45,56 +45,6 @@ namespace Multiboot {
         }
     };
 
-    class Information {
-        struct Iterator {
-            uintptr_t cursor;
-            uintptr_t end;
-
-            void operator++() {
-                cursor += (*this)->size;
-                if (cursor % MULTIBOOT_TAG_ALIGN != 0) {
-                    cursor += MULTIBOOT_TAG_ALIGN;
-                    cursor &= ~(MULTIBOOT_TAG_ALIGN - 1);
-                }
-                if (cursor > end) {
-                    cursor = end;
-                }
-            }
-
-            bool operator !=(Iterator& other) const {
-                return cursor != other.cursor;
-            }
-
-            const Tag& operator*() const {
-                return *(Tag*)cursor;
-            }
-
-            const Tag* operator->() const {
-                return (Tag*)cursor;
-            }
-        };
-
-        struct Header {
-            uint32_t size;
-            uint32_t reserved;
-        };
-
-        uintptr_t address;
-
-    public:
-        Information(uintptr_t address) : address(address) {}
-
-        Iterator begin() const {
-            auto end = address + reinterpret_cast<Header*>(address)->size;
-            return Iterator {address + sizeof(Header), end};
-        }
-
-        Iterator end() const {
-            auto end = address + reinterpret_cast<Header*>(address)->size;
-            return Iterator {end, end};
-        }
-    };
-
     struct TagEnd {
         static constexpr int Id = 0;
 
@@ -195,6 +145,60 @@ namespace Multiboot {
         uint32_t type;
         uint32_t size;
         uint8_t rsdp[0];
+    };
+
+    class Information {
+        struct Iterator {
+            uintptr_t cursor;
+            uintptr_t end;
+
+            void operator++() {
+                cursor += (*this)->size;
+                if (cursor % MULTIBOOT_TAG_ALIGN != 0) {
+                    cursor += MULTIBOOT_TAG_ALIGN;
+                    cursor &= ~(MULTIBOOT_TAG_ALIGN - 1);
+                }
+                if (cursor > end) {
+                    cursor = end;
+                }
+
+                if (cursor != end && (*this)->type == TagEnd::Id) {
+                    cursor = end;
+                }
+            }
+
+            bool operator !=(Iterator& other) const {
+                return cursor != other.cursor;
+            }
+
+            const Tag& operator*() const {
+                return *(Tag*)cursor;
+            }
+
+            const Tag* operator->() const {
+                return (Tag*)cursor;
+            }
+        };
+
+        struct Header {
+            uint32_t size;
+            uint32_t reserved;
+        };
+
+        uintptr_t address;
+
+    public:
+        Information(uintptr_t address) : address(address) {}
+
+        Iterator begin() const {
+            auto end = address + reinterpret_cast<Header*>(address)->size;
+            return Iterator {address + sizeof(Header), end};
+        }
+
+        Iterator end() const {
+            auto end = address + reinterpret_cast<Header*>(address)->size;
+            return Iterator {end, end};
+        }
     };
 }
 
