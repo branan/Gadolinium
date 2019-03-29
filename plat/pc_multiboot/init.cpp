@@ -102,19 +102,17 @@ bool initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
 }
 
 void print_mmap(multiboot& mb) {
-    static const char* labels[] =
-        { "",
-          "available",
-          "reserved",
-          "reclaimable"
-          "nonvolatile"
-          "bad"
-        };
+    static const char* labels[] ={
+        "",
+        "available",
+        "reserved",
+        "reclaimable"
+        "nonvolatile"
+        "bad"
+    };
 
     klog("==Physical Memory Map==\n");
-    size_t num_entries = (mb.mmap->size - 16) / mb.mmap->entry_size;
-    for(size_t i = 0; i < num_entries; i++) {
-        auto entry = mb.mmap->entries[i];
+    for(const auto& entry : *mb.mmap) {
         klog(entry.addr, ":", entry.addr+entry.len, " ", labels[(uint32_t)entry.type], "\n");
     }
 }
