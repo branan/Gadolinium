@@ -1,4 +1,4 @@
-#include "multiboot2.h"
+#include "multiboot2.hpp"
 #include "kmemlayout.h"
 #include "logging.hpp"
 #include "allocator.hpp"
@@ -27,71 +27,43 @@ static const char* tag_names[] = {
 
 // The multiboot tags we care about, broken out for us to parse later
 struct multiboot {
-    multiboot_tag_mmap* mmap = 0;
-    multiboot_tag_elf_sections* shdr = 0;
-    multiboot_tag_old_acpi *acpi_old = 0;
-    multiboot_tag_new_acpi *acpi_new = 0;
+    const Multiboot::TagMmap* mmap = 0;
+    const Multiboot::TagElfSections* shdr = 0;
+    const Multiboot::TagOldAcpi *acpi_old = 0;
+    const Multiboot::TagNewAcpi *acpi_new = 0;
 };
 
 bool read_multiboot_tags(uintptr_t descriptor, multiboot* mb) {
-    auto next_tag = [&](const multiboot_tag* tag) {
-        auto size = tag->size;
-        if(size % 8 != 0) {
-            size += 8;
-            size &= 0xfffffff8;
-        }
-        descriptor += size;
-        return (multiboot_tag*)descriptor;
-    };
+    auto info = Multiboot::Information(descriptor);
+    for(const auto& tag : info) {
 
-    auto info = (multiboot_information*)descriptor;
-    const uintptr_t desc_end = descriptor + info->size;
-    descriptor += 8; // skip past the info header
-    for(auto tag = (multiboot_tag*)descriptor;
-        descriptor < desc_end && tag->type != MULTIBOOT_TAG_TYPE_END;
-        tag = next_tag(tag)) {
-        switch (tag->type) {
-        case MULTIBOOT_TAG_TYPE_MMAP:
-            mb->mmap = (multiboot_tag_mmap*)tag;
-            break;
-        case MULTIBOOT_TAG_TYPE_ELF_SECTIONS:
-            mb->shdr = (multiboot_tag_elf_sections*)tag;
-            break;
-        case MULTIBOOT_TAG_TYPE_ACPI_OLD:
-            mb->acpi_old = (multiboot_tag_old_acpi*)tag;
-            break;
-        case MULTIBOOT_TAG_TYPE_ACPI_NEW:
-            mb->acpi_new = (multiboot_tag_new_acpi*)tag;
-            break;
-        default:
-            if (tag->type > MULTIBOOT_TAG_TYPE_NETWORK) {
-                klog("Ignoring an unknown multiboot tag of type ", tag->type, "\n");
-            } else {
-                klog("Ignorning multiboot tag of type ", tag_names[tag->type], "\n");
-            }
+#define EXTRACT_TAG(field, class)                       \
+        auto field = tag.cast<Multiboot::Tag##class>(); \
+        if (field) { mb->field = field; continue; }
+
+        EXTRACT_TAG(mmap, Mmap);
+        EXTRACT_TAG(shdr, ElfSections);
+        EXTRACT_TAG(acpi_old, OldAcpi);
+        EXTRACT_TAG(acpi_new, NewAcpi);
+
+        auto biggest_tag = sizeof(tag_names) / sizeof(tag_names[0]);
+        if (tag.type > biggest_tag) {
+            klog("Ignorning an unknown multiboot tag of type ", tag.type, "\n");
+        } else {
+            klog("Ignorning a multiboot tag of type ", tag_names[tag.type], "\n");
         }
     }
     return true;
 }
 
 bool initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
-    if (mb.mmap->entry_size != sizeof(multiboot_mmap_entry)) {
-        klog("Can't use the memory map!");
-        return false;
-    }
-    size_t num_entries = (mb.mmap->size - 16) / mb.mmap->entry_size;
-    for(size_t i = 0; i < num_entries; i++) {
-        auto entry = mb.mmap->entries[i];
-        if (entry.type == MULTIBOOT_MEMORY_AVAILABLE) {
+    for (const auto& entry : *mb.mmap) {
+        if (entry.type == Multiboot::TagMmap::Entry::Type::Available) {
             alloc.add_region(entry.addr, entry.len);
         }
     }
-    for(size_t i = 0; i < num_entries; i++) {
-        auto entry = mb.mmap->entries[i];
-        if (entry.type == MULTIBOOT_MEMORY_RESERVED ||
-            entry.type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE ||
-            entry.type == MULTIBOOT_MEMORY_NVS ||
-            entry.type == MULTIBOOT_MEMORY_BADRAM) {
+    for (const auto& entry : *mb.mmap) {
+        if (entry.type != Multiboot::TagMmap::Entry::Type::Available) {
             alloc.reserve_region(entry.addr, entry.len);
         }
     }
@@ -122,7 +94,7 @@ void print_mmap(multiboot& mb) {
     size_t num_entries = (mb.mmap->size - 16) / mb.mmap->entry_size;
     for(size_t i = 0; i < num_entries; i++) {
         auto entry = mb.mmap->entries[i];
-        klog(entry.addr, ":", entry.addr+entry.len, " ", labels[entry.type], "\n");
+        klog(entry.addr, ":", entry.addr+entry.len, " ", labels[(uint32_t)entry.type], "\n");
     }
 }
 

@@ -1,5 +1,5 @@
 #define ASM_FILE
-#include "multiboot2.h"
+#include "multiboot2.hpp"
 #include "kmemlayout.h"
 
 .global loader # making entry point visible to linker
@@ -7,7 +7,7 @@
 
 # setting up the Multiboot header - see GRUB docs for details
 .set MBSIZE, (mbhdr_end - mbhdr_start)
-.set CHECKSUM, -(MULTIBOOT2_HEADER_MAGIC + MBSIZE)         # checksum required
+.set CHECKSUM, -(MULTIBOOT2_HEADER_MAGIC + MBSIZE)
 
 .section .multiboot, "a", @progbits
 
