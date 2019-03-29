@@ -31,6 +31,7 @@ struct multiboot {
     const Multiboot::TagElfSections* shdr = 0;
     const Multiboot::TagOldAcpi *acpi_old = 0;
     const Multiboot::TagNewAcpi *acpi_new = 0;
+    const Multiboot::TagCommandLine *cmd_line = 0;
 };
 
 bool read_multiboot_tags(uintptr_t descriptor, multiboot* mb) {
@@ -45,6 +46,11 @@ bool read_multiboot_tags(uintptr_t descriptor, multiboot* mb) {
         EXTRACT_TAG(shdr, ElfSections);
         EXTRACT_TAG(acpi_old, OldAcpi);
         EXTRACT_TAG(acpi_new, NewAcpi);
+        EXTRACT_TAG(cmd_line, CommandLine);
+
+        if (tag.cast<Multiboot::TagEnd>()) {
+            break;
+        }
 
         auto biggest_tag = sizeof(tag_names) / sizeof(tag_names[0]);
         if (tag.type > biggest_tag) {
@@ -53,6 +59,25 @@ bool read_multiboot_tags(uintptr_t descriptor, multiboot* mb) {
             klog("Ignorning a multiboot tag of type ", tag_names[tag.type], "\n");
         }
     }
+
+#define CHECK_TAG(field, class) \
+    if (mb->field == nullptr) { \
+        klog("Missing multiboot tag of type ", tag_names[Multiboot::Tag##class::Id], "\n"); \
+        return false; \
+    }
+
+    CHECK_TAG(mmap, Mmap);
+    CHECK_TAG(shdr, ElfSections);
+    CHECK_TAG(cmd_line, CommandLine);
+
+    // special case - we only need one of these
+    if(mb->acpi_old == nullptr && mb->acpi_new == nullptr) {
+        klog("Missing multiboot tag of type ",
+             tag_names[Multiboot::TagOldAcpi::Id], " or ",
+             tag_names[Multiboot::TagNewAcpi::Id], "\n");
+        return false;
+    }
+
     return true;
 }
 
@@ -107,8 +132,6 @@ extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
         return false;
     }
 
-    klog(multiboot_ptr, "\n\n");
-
     Allocator::global().add_region(KERNEL_HEAP_START, 0x8000);
 
     // We want to stash a few values from the multiboot tags before we
@@ -149,6 +172,8 @@ extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
     PageAllocator::global().dump();
     klog("\n");
     print_mmap(tags);
+    klog("\n");
+    klog("Kernel command line: \"", tags.cmd_line->string, "\"\n");
 
     return true;
 }

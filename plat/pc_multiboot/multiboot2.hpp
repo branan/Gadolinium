@@ -95,6 +95,21 @@ namespace Multiboot {
         }
     };
 
+    struct TagEnd {
+        static constexpr int Id = 0;
+
+        uint32_t type;
+        uint32_t size;
+    };
+
+    struct TagCommandLine {
+        static constexpr int Id = 1;
+
+        uint32_t type;
+        uint32_t size;
+        char string[0];
+    };
+
     struct TagMmap {
         static constexpr int Id = 6;
 
