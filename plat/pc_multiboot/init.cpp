@@ -23,6 +23,9 @@ static const char* tag_names[] = {
     "acpi (old)",
     "acpi (new)",
     "network",
+
+    // TODO: There are some newer multiboot tags in modern GRUBs. We
+    // should know how to print them.
 };
 
 // The multiboot tags we care about, broken out for us to parse later
@@ -47,13 +50,6 @@ bool read_multiboot_tags(uintptr_t descriptor, multiboot* mb) {
         EXTRACT_TAG(acpi_old, OldAcpi);
         EXTRACT_TAG(acpi_new, NewAcpi);
         EXTRACT_TAG(cmd_line, CommandLine);
-
-        auto biggest_tag = sizeof(tag_names) / sizeof(tag_names[0]);
-        if (tag.type > biggest_tag) {
-            klog("Ignorning an unknown multiboot tag of type ", tag.type, "\n");
-        } else {
-            klog("Ignorning a multiboot tag of type ", tag_names[tag.type], "\n");
-        }
     }
 
 #define CHECK_TAG(field, class) \
@@ -96,25 +92,8 @@ bool initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
             alloc.reserve_region(addr, section->size);
         }
     }
-    klog("\n");
 
     return true;
-}
-
-void print_mmap(multiboot& mb) {
-    static const char* labels[] ={
-        "",
-        "available",
-        "reserved",
-        "reclaimable"
-        "nonvolatile"
-        "bad"
-    };
-
-    klog("==Physical Memory Map==\n");
-    for(const auto& entry : *mb.mmap) {
-        klog(entry.addr, ":", entry.addr+entry.len, " ", labels[(uint32_t)entry.type], "\n");
-    }
 }
 
 extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
@@ -129,7 +108,9 @@ extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
     // initialize our memory management, as we will likely overwrite
     // Grub's data structures if we don't.
     multiboot tags;
-    read_multiboot_tags((uintptr_t)multiboot_ptr, &tags);
+    if (!read_multiboot_tags((uintptr_t)multiboot_ptr, &tags)) {
+        return false;
+    }
 
     if (tags.acpi_new) {
         // TODO: Get XSDT pointer
@@ -157,14 +138,6 @@ extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
     // TODO: setup interrupts/error handling
     // TODO: initialize userspace
     // TODO: initialize drivers
-
-    Allocator::global().dump();
-    klog("\n");
-    PageAllocator::global().dump();
-    klog("\n");
-    print_mmap(tags);
-    klog("\n");
-    klog("Kernel command line: \"", tags.cmd_line->string, "\"\n");
 
     return true;
 }

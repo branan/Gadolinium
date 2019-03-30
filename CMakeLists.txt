@@ -63,6 +63,8 @@ add_executable(kernel ${kernel_SOURCES})
 # Common options. Platform/arch specific options are added below.
 target_compile_options(kernel PUBLIC -fno-stack-protector -fno-rtti -fno-exceptions -fno-builtin -nostdlib -Wall -Wextra -Werror)
 
+# TODO: When we can update to a newer CMake (read: When I get off of
+# 18.04), we should move from LINK_FLAGS to target_link_options().
 set_target_properties(kernel PROPERTIES
   LINK_DEPENDS "${LINKER_SCRIPT}"
   LINK_FLAGS "-m64 -static -T${LINKER_SCRIPT} -nostdlib -fno-builtin -nostartfiles -nodefaultlibs -z max-page-size=0x1000 -Wl,--build-id=none -Wl,--no-dynamic-linker"
