@@ -77,7 +77,8 @@ kboot:
     call kinit
     test %eax, %eax # kinit returns false if it fails. It handles earlyprint-ing a message
     jz halt
-   
-   # call kmain
+
+    mov %rax, %rdi
+#    call kmain
 halt:
    hlt

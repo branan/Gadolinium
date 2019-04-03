@@ -72,8 +72,7 @@ namespace Multiboot {
                 AcpiReclaimable = 3,
                 NonVolatileStorage = 4,
                 BadRam = 5
-            };
-            Type type;
+            } type;
             uint32_t zero;
         } __attribute__((packed));
 

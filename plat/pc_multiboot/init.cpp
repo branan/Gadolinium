@@ -85,6 +85,7 @@ bool initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
         }
     }
 
+    // TODO: ELF sections header should support iteration
     for (size_t i = 0; i < mb.shdr->num; i++) {
         auto section = (Elf64Section*)(mb.shdr->sections + i * mb.shdr->entsize);
         if (section->type && section->addr) {
@@ -96,6 +97,9 @@ bool initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
     return true;
 }
 
+// TODO: Should return a pointer to a kernel information struct (or
+// nullptr on error). Should include suficiently extracted information
+// for kmain to do what it needs to do.
 extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
     if(MULTIBOOT2_BOOTLOADER_MAGIC != magic) {
         klog("Not loaded from a multiboot2-compliant bootloader");
@@ -134,7 +138,14 @@ extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
     // allocating pages.
 
     // TODO: create our real tables, and reclaim pages occupied by
-    // initial ones.
+    // initial ones. This will put the kernel in HIGH MEMORY ONLY and
+    // any device memory will need to be mapped (with appropriate
+    // cache settings).
+
+    // TODO: Should re-mapping and re-initializing the logger (if we
+    // switch to VGA) be done here?
+
+    // The things below probably belong in kmain?
     // TODO: setup interrupts/error handling
     // TODO: initialize userspace
     // TODO: initialize drivers
@@ -157,6 +168,7 @@ struct SerialSink : public Sink {
     }
 };
 
+// TODO: Should this print to the VGA text console instead of serial?
 Sink* Sink::global() {
     static SerialSink s;
     return &s;
