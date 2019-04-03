@@ -3,7 +3,6 @@
 #include "logging.hpp"
 #include "allocator.hpp"
 #include "page_allocator.hpp"
-#include "elf64.h"
 
 static const char* tag_names[] = {
     "end",
@@ -85,12 +84,10 @@ bool initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
         }
     }
 
-    // TODO: ELF sections header should support iteration
-    for (size_t i = 0; i < mb.shdr->num; i++) {
-        auto section = (Elf64Section*)(mb.shdr->sections + i * mb.shdr->entsize);
-        if (section->type && section->addr) {
-            auto addr = section->addr > KERNEL_VMA_BASE ? section->addr - KERNEL_VMA_BASE : section->addr;
-            alloc.reserve_region(addr, section->size);
+    for (const auto& section : *mb.shdr) {
+        if (section.type && section.addr) {
+            auto addr = section.addr > KERNEL_VMA_BASE ? section.addr - KERNEL_VMA_BASE : section.addr;
+            alloc.reserve_region(addr, section.size);
         }
     }
 

@@ -30,6 +30,8 @@
 #include "stddef.h"
 #include "stdint.h"
 
+#include "elf64.h"
+
 namespace Multiboot {
     struct Tag {
         uint32_t type;
@@ -128,6 +130,40 @@ namespace Multiboot {
         uint32_t entsize;
         uint32_t shndx;
         char sections[0];
+
+        struct Iterator {
+            const Elf64::SectionHeader* entry;
+            const Elf64::SectionHeader* end;
+            uint32_t entry_size;
+
+            const Elf64::SectionHeader& operator*() const {
+                return *entry;
+            }
+
+            const Elf64::SectionHeader* operator->() const {
+                return entry;
+            }
+
+            void operator++() {
+                entry = (Elf64::SectionHeader*)((uintptr_t)entry + entry_size);
+                if (entry > end)
+                    entry = end;
+            }
+
+            bool operator !=(Iterator& other) const {
+                return entry != other.entry;
+            }
+        };
+
+        Iterator begin() const {
+            auto end = (Elf64::SectionHeader*)((uintptr_t)sections + num * entsize);
+            return Iterator {(Elf64::SectionHeader*)sections, end, entsize};
+        }
+
+        Iterator end() const {
+            auto end = (Elf64::SectionHeader*)((uintptr_t)sections + num * entsize);
+            return Iterator {end, end, entsize};
+        }
     };
 
     struct TagOldAcpi {
