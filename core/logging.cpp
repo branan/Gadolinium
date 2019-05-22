@@ -1,4 +1,5 @@
 #include "logging.hpp"
+#include "string.hpp"
 
 static const char* nybbles = "0123456789ABCDEF";
 
@@ -15,6 +16,10 @@ void Logger::write(const char* str) {
         m_sink->writec(*str);
         str++;
     }
+}
+
+void Logger::write(const String& str) {
+    write(str.str());
 }
 
 #define WRITE_U(s) void Logger::write(uint##s##_t u) { \

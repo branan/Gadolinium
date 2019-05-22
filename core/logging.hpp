@@ -3,6 +3,8 @@
 #include "stddef.h"
 #include "stdint.h"
 
+class String;
+
 class Sink {
 public:
     virtual void writec(char) = 0;
@@ -18,6 +20,7 @@ public:
     void sink(Sink* s) { m_sink = s; }
 
     void write(const char*);
+    void write(const String&);
     void write(uint8_t);
     void write(uint16_t);
     void write(uint32_t);

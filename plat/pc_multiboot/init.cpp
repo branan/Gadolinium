@@ -3,6 +3,7 @@
 #include "logging.hpp"
 #include "allocator.hpp"
 #include "page_allocator.hpp"
+#include "boot_information.hpp"
 
 static const char* tag_names[] = {
     "end",
@@ -72,7 +73,7 @@ bool read_multiboot_tags(uintptr_t descriptor, multiboot* mb) {
     return true;
 }
 
-bool initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
+void initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
     for (const auto& entry : *mb.mmap) {
         if (entry.type == Multiboot::TagMmap::Entry::Type::Available) {
             alloc.add_region(entry.addr, entry.len);
@@ -90,17 +91,12 @@ bool initialize_page_allocator (multiboot& mb, PageAllocator& alloc) {
             alloc.reserve_region(addr, section.size);
         }
     }
-
-    return true;
 }
 
-// TODO: Should return a pointer to a kernel information struct (or
-// nullptr on error). Should include suficiently extracted information
-// for kmain to do what it needs to do.
-extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
+extern "C" BootInfo* kinit(uint32_t magic, uint32_t multiboot_ptr) {
     if(MULTIBOOT2_BOOTLOADER_MAGIC != magic) {
         klog("Not loaded from a multiboot2-compliant bootloader");
-        return false;
+        return nullptr;
     }
 
     Allocator::global().add_region(KERNEL_HEAP_START, 0x8000);
@@ -110,7 +106,7 @@ extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
     // Grub's data structures if we don't.
     multiboot tags;
     if (!read_multiboot_tags((uintptr_t)multiboot_ptr, &tags)) {
-        return false;
+        return nullptr;
     }
 
     if (tags.acpi_new) {
@@ -119,17 +115,22 @@ extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
         // TODO: Get RSDT pointer
     } else {
         klog("Could not find ACPI tables.");
-        return false;
+        return nullptr;
     }
 
-    size_t elf_header_size = tags.shdr->num * tags.shdr->entsize;
-    uint8_t* elf_section_headers = new uint8_t[elf_header_size];
-    for (size_t i = 0; i < elf_header_size; i++)
-        elf_section_headers[i] = tags.shdr->sections[i];
-
-    if(!initialize_page_allocator(tags, PageAllocator::global())) {
-        return false;
+    auto boot_info = new BootInfo;
+    boot_info->elf.shnum = tags.shdr->num;
+    boot_info->elf.shndx = tags.shdr->shndx;
+    boot_info->elf.sections = new Elf64::SectionHeader[tags.shdr->num];
+    size_t header_idx = 0;
+    for (const auto& section : *tags.shdr) {
+        boot_info->elf.sections[header_idx] = section;
+        ++header_idx;
     }
+
+    boot_info->cmdline = String(tags.cmd_line->string);
+
+    initialize_page_allocator(tags, PageAllocator::global());
 
     // Below here, we risk clobbering any multiboot data, since we're
     // allocating pages.
@@ -139,15 +140,23 @@ extern "C" bool kinit(uint32_t magic, uint32_t multiboot_ptr) {
     // any device memory will need to be mapped (with appropriate
     // cache settings).
 
-    // TODO: Should re-mapping and re-initializing the logger (if we
-    // switch to VGA) be done here?
+    // TODO: Where does ACPI go? Is it "PC platform"? "x86
+    // architecture"? Just an information-provider driver of some
+    // sort?  I *think* it needs to be in platform, since we need to
+    // know the number of processors to initialize the GDT. Possibly
+    // it's a thing that needs to be shared (e.g., it also needs to be
+    // enumerated to find devices). Maybe that's also platform - e.g.,
+    // do we walk ACPI stuff and create some sort of DeviceInfo object
+    // for each thing in it that the main kernel can then use to find
+    // drivers?
 
     // The things below probably belong in kmain?
     // TODO: setup interrupts/error handling
     // TODO: initialize userspace
     // TODO: initialize drivers
+    // TODO: switch logging to something based on a driver
 
-    return true;
+    return boot_info;
 }
 
 struct SerialSink : public Sink {

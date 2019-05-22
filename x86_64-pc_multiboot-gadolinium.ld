@@ -7,7 +7,7 @@ kernel_LMA = 0x00100000;
 SECTIONS
 {
     . = kernel_LMA;
-    .reclaim :
+    .nomap.reclaim :
     {
         *(.multiboot)
         . = ALIGN(16);
@@ -20,6 +20,17 @@ SECTIONS
         pgdt = _pgdt_arch;
     }
 
+    . = ALIGN(0x1000);
+    .nomap.storage :
+    {
+        bootheap = .;
+        . += 0x8000;
+
+        . += 0x2000;
+        bootstack_top = .;
+    }
+
+    . = ALIGN(0x1000);
     . += kernel_VMA;
     .text : AT(ADDR(.text) - kernel_VMA)
     {
@@ -58,22 +69,6 @@ SECTIONS
         *(COMMON)
         *(.bss)
         *(.gnu.linkonce.b*)
-    }
-
-    . = ALIGN(0x1000);
-    .storage : AT(ADDR(.storage) - kernel_VMA)
-    {
-        bootheap = . - kernel_VMA;
-        . += 0x8000;
-
-        . += 0x2000;
-        bootstack_top = . - kernel_VMA;
         . = ALIGN(0x1000);
-    }
-
-    /DISCARD/ :
-    {
-        *(.comment)
-        *(.note.gnu.build-id)
     }
 }

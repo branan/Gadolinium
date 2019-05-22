@@ -53,7 +53,9 @@ set(kernel_SOURCES
 
   core/logging.cpp
   core/allocator.cpp
+  core/main.cpp
   core/page_allocator.cpp
+  core/string.cpp
 )
 
 include_directories(core)
@@ -61,7 +63,9 @@ include_directories(core)
 add_executable(kernel ${kernel_SOURCES})
 
 # Common options. Platform/arch specific options are added below.
-target_compile_options(kernel PUBLIC -fno-stack-protector -fno-rtti -fno-exceptions -fno-builtin -nostdlib -Wall -Wextra -Werror)
+target_compile_options(kernel PUBLIC -fno-stack-protector -fno-rtti -fno-exceptions -fno-builtin -nostdlib -Wall -Wextra -Werror -static)
+
+target_link_libraries(kernel gcc)
 
 # TODO: When we can update to a newer CMake (read: When I get off of
 # 18.04), we should move from LINK_FLAGS to target_link_options().

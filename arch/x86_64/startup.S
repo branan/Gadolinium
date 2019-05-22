@@ -75,10 +75,10 @@ kboot:
     # Any arguments for kinit will have come from code that calls us,
     # and have been preserved by functions in this file.
     call kinit
-    test %eax, %eax # kinit returns false if it fails. It handles earlyprint-ing a message
+    test %rax, %rax # kinit returns false if it fails. It handles earlyprint-ing a message
     jz halt
 
     mov %rax, %rdi
-#    call kmain
+    call kmain
 halt:
    hlt
