@@ -60,7 +60,6 @@ SECTIONS
     {
         *(.data)
         *(.gnu.linkonce.d*)
-        . = ALIGN(0x1000);
     }
 
     . = ALIGN(0x1000);
