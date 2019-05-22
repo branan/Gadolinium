@@ -23,17 +23,17 @@ void Logger::write(const String& str) {
 }
 
 #define WRITE_U(s) void Logger::write(uint##s##_t u) { \
-    int shift = s - 4; \
-    uint##s##_t mask = 0xf << shift; \
-    m_sink->writec('0'); \
-    m_sink->writec('x'); \
-    while(mask) { \
-        auto nybble = (u & mask) >> shift; \
-        mask >>= 4; \
-        shift -= 4; \
-        m_sink->writec(nybbles[nybble]); \
-    } \
-}
+        int shift = s - 4;                             \
+        m_sink->writec('0');                           \
+        m_sink->writec('x');                           \
+        while(shift >= 0) {                            \
+            uint##s##_t mask = 0xf;                    \
+            mask <<= shift;                            \
+            uint##s##_t nybble = (u & mask) >> shift;  \
+            shift -= 4;                                \
+            m_sink->writec(nybbles[nybble]);           \
+        }                                              \
+    }
 
 WRITE_U(8)
 WRITE_U(16)

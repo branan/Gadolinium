@@ -94,7 +94,7 @@ add_custom_target(image ALL DEPENDS ${IMAGE_FILE})
 if (ARCH STREQUAL "x86_64")
   set(QEMU_OPTIONS -machine q35 -soundhw hda -serial stdio -m 4G -smp 2 -cdrom ${IMAGE_FILE})
 
-  target_compile_options(kernel PUBLIC -m64 -mcmodel=kernel -mno-red-zone)
+  target_compile_options(kernel PUBLIC -m64 -mcmodel=kernel -mno-red-zone -mno-sse)
 endif()
 
 add_custom_target(run
